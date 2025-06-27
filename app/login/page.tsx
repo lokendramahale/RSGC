@@ -79,8 +79,8 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 p-4 bg-muted rounded-lg">
-            <p className="text-sm font-medium mb-2">Demo Credentials:</p>
-            <div className="text-xs space-y-1">
+            {/* <p className="text-sm font-medium mb-2">Demo Credentials:</p> */}
+            {/* <div className="text-xs space-y-1">
               <p>
                 <strong>Admin:</strong> admin@rsgc.com / password123
               </p>
@@ -90,7 +90,7 @@ export default function LoginPage() {
               <p>
                 <strong>Coordinator:</strong> coordinator@rsgc.com / password123
               </p>
-            </div>
+            </div> */}
           </div>
         </CardContent>
       </Card>

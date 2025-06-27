@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { MapPin, Truck, Play, Pause, RotateCcw, Navigation, Clock } from "lucide-react"
+import dynamic from 'next/dynamic';
+const LiveMap = dynamic(() => import('@/components/live-map'), {
+  ssr: false, // disables server-side rendering
+});
 
 const vehicles = [
   {
@@ -143,73 +147,7 @@ export default function TrackingPage() {
               <CardTitle>Live Map View</CardTitle>
               <CardDescription>Real-time vehicle positions and routes</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="h-96 bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
-                {/* Simulated Map Background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-green-50"></div>
-                <div className="absolute inset-0 opacity-20">
-                  <svg className="w-full h-full" viewBox="0 0 400 300">
-                    {/* Simulated roads */}
-                    <path d="M0,150 L400,150" stroke="#cbd5e1" strokeWidth="3" />
-                    <path d="M200,0 L200,300" stroke="#cbd5e1" strokeWidth="3" />
-                    <path d="M0,75 L400,75" stroke="#e2e8f0" strokeWidth="2" />
-                    <path d="M0,225 L400,225" stroke="#e2e8f0" strokeWidth="2" />
-                    <path d="M100,0 L100,300" stroke="#e2e8f0" strokeWidth="2" />
-                    <path d="M300,0 L300,300" stroke="#e2e8f0" strokeWidth="2" />
-                  </svg>
-                </div>
-
-                {/* Vehicle Markers */}
-                {filteredVehicles.map((vehicle, index) => (
-                  <div
-                    key={vehicle.id}
-                    className="absolute transform -translate-x-1/2 -translate-y-1/2"
-                    style={{
-                      left: `${20 + index * 15}%`,
-                      top: `${30 + index * 10}%`,
-                    }}
-                  >
-                    <div className="relative">
-                      <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                          vehicle.status === "active"
-                            ? "bg-green-600"
-                            : vehicle.status === "inactive"
-                              ? "bg-gray-600"
-                              : "bg-red-600"
-                        }`}
-                      >
-                        <Truck className="w-3 h-3" />
-                      </div>
-                      {vehicle.status === "active" && (
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                      )}
-                      <div className="absolute top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                        {vehicle.id}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="absolute bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg">
-                  <div className="text-sm font-medium mb-2">Legend</div>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-green-600 rounded-full"></div>
-                      <span>Active Vehicle</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-gray-600 rounded-full"></div>
-                      <span>Inactive Vehicle</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-red-600 rounded-full"></div>
-                      <span>Maintenance</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
+            <LiveMap />
           </Card>
 
           {/* Vehicle List */}
