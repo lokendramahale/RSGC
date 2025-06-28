@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/auth-context"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 export function Header() {
   const { user, logout } = useAuth()
@@ -32,7 +33,7 @@ export function Header() {
           <Bell className="h-5 w-5" />
           <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">3</Badge>
         </Button>
-
+        {/* <ThemeToggle /> dark theme toggle button*/} 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">

@@ -3,6 +3,33 @@
 import { useState, useEffect } from "react"
 import { api } from "../lib/api"
 
+export interface DashboardMetrics {
+  totalBins: number
+  activeVehicles: number
+  alertsToday: number
+  collectionsToday: number
+  overflowBins: number
+  totalUsers: number
+  avgFillLevel: number
+  changeInBins: number
+}
+
+export interface CollectionLog {
+  id: string
+  collection_time: string
+  bin: { location_name: string }
+  collector: { name: string }
+}
+
+export interface Alert {
+  id: string
+  type: string
+  severity: string
+  message: string
+  triggered_at: string
+  bin: { location_name: string }
+}
+
 interface DashboardSummary {
   totalBins: number
   activeVehicles: number
@@ -11,6 +38,7 @@ interface DashboardSummary {
   overflowBins: number
   totalUsers: number
   avgFillLevel: number
+  changeInBins: number
 }
 
 interface DashboardCharts {

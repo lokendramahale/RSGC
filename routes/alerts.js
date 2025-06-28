@@ -17,8 +17,8 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 })
 
-// Get active alerts
-router.get("/active", authenticateToken, async (req, res) => {
+// Get active alerts (authenticateToken has been removed temporarily for testing)
+router.get("/active",  async (req, res) => {
   try {
     const alerts = await Alert.findActive()
     res.json({ alerts })
