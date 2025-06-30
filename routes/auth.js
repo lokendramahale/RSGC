@@ -12,8 +12,12 @@ router.post("/login", validateRequest(schemas.login), async (req, res) => {
     const { email, password } = req.body
 
     const user = await User.findByEmail(email)
-    if (!user || !(await User.comparePassword(password, user.password))) {
-      return res.status(401).json({ error: "Invalid credentials" })
+    if (!user ) {
+      return res.status(401).json({ error: "Invalid email" })
+    }
+    if( !(await User.comparePassword(password, user.password))){
+      console.log(password, user.password);
+      return res.status(401).json({ error: "Invalid password" })
     }
 
     if (user.status !== "active") {

@@ -124,7 +124,19 @@ class User {
     return result.rows[0]
   }
 
+  // static async hashPassword(plainPassword) {
+  //   return new Promise((resolve, reject) => {
+  //     bcrypt.hash("8(WhArib)7", 10, function (err, hash) {
+  //       if (err) reject(err)
+  //       console.log("Hashed password:", hash)
+  //       resolve(hash)
+  //     })
+  //   })
+  // }
+
   static async comparePassword(plainPassword, hashedPassword) {
+    console.log(bcrypt.compare(plainPassword, hashedPassword));
+    
     return bcrypt.compare(plainPassword, hashedPassword)
   }
 }

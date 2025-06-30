@@ -35,10 +35,23 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const token = localStorage.getItem("rsgc_token");
         const [metricsRes, logsRes, alertsRes] = await Promise.all([
-          fetch(`${API_BASE}/dashboard/summary`).then((res) => res.json()),
-          fetch(`${API_BASE}/dashboard/activities?limit=4`).then((res) => res.json()),
-          fetch(`${API_BASE}/alerts/active`).then((res) => res.json()),
+          fetch(`${API_BASE}/dashboard/summary`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }).then((res) => res.json()),
+          fetch(`${API_BASE}/dashboard/activities?limit=4`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }).then((res) => res.json()),
+          fetch(`${API_BASE}/alerts/active`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }).then((res) => res.json()),
         ])
         setMetrics(metricsRes.summary)
         setLogs(logsRes.activities?.recentCollections || [])

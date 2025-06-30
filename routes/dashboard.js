@@ -5,7 +5,7 @@ const { authenticateToken } = require("../middleware/auth")
 const router = express.Router()
 
 // Get dashboard summary (authenticateToken has been removed temporarily for testing)
-router.get("/summary",  async (req, res) => {
+router.get("/summary", authenticateToken, async (req, res) => {
   try {
     const today = new Date()
     today.setHours(0, 0, 0, 0)

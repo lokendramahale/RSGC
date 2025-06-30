@@ -9,10 +9,12 @@ const authenticateToken = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({ error: "Access token required" })
     }
-
+    
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    const user = await User.findByPk(decoded.userId)
-
+    
+    const user = await User.findById(decoded.userId)
+    
+    console.log("Fetched User:", user);
     if (!user || user.status !== "active") {
       return res.status(401).json({ error: "Invalid or inactive user" })
     }
