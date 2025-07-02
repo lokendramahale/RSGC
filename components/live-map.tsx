@@ -4,8 +4,7 @@ import { io } from "socket.io-client";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 const vehicleIcon = new L.Icon({
@@ -67,69 +66,73 @@ export default function LiveMap({
   const [vehiclePaths, setVehiclePaths] = useState<Record<string, Location[]>>({});
 
   useEffect(() => {
-  if (mode === "tracking") {
-    const token = localStorage.getItem("rsgc_token");
+    if (mode === "tracking") {
+      const token = localStorage.getItem("rsgc_token");
 
-    const fetchLocations = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/map/vehicleLocations`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      const fetchLocations = async () => {
+        try {
+          const res = await axios.get(`${API_BASE}/map/vehicleLocations`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
 
-        const raw = res.data.vehicles;
-        const locations: Location[] = raw.map((v: any) => ({
-          vehicle_id: v.id,
-          latitude: parseFloat(v.lat),
-          longitude: parseFloat(v.lng),
-          timestamp: v.timestamp,
-          speed: parseFloat(v.speed || 0),
-          heading: parseFloat(v.heading || 0),
-        }));
+          const raw = res.data.vehicles;
+          const locations: Location[] = raw.map((v: any) => ({
+            vehicle_id: v.id,
+            latitude: parseFloat(v.lat),
+            longitude: parseFloat(v.lng),
+            timestamp: v.timestamp,
+            speed: parseFloat(v.speed || 0),
+            heading: parseFloat(v.heading || 0),
+          }));
 
-        const grouped: Record<string, Location[]> = {};
-        for (const loc of locations) {
-          if (!grouped[loc.vehicle_id]) grouped[loc.vehicle_id] = [];
-          grouped[loc.vehicle_id].push(loc);
+          const grouped: Record<string, Location[]> = {};
+          for (const loc of locations) {
+            if (!grouped[loc.vehicle_id]) grouped[loc.vehicle_id] = [];
+            grouped[loc.vehicle_id].push(loc);
+          }
+
+          for (const v in grouped) {
+            grouped[v].sort(
+              (a, b) =>
+                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+          }
+
+          setVehiclePaths(grouped);
+        } catch (err) {
+          console.error("Fetch error:", err);
         }
+      };
 
-        for (const v in grouped) {
-          grouped[v].sort(
-            (a, b) =>
-              new Date(a.timestamp).getTime() -
-              new Date(b.timestamp).getTime()
-          );
-        }
+      fetchLocations();
 
-        setVehiclePaths(grouped);
-      } catch (err) {
-        console.error("Fetch error:", err);
-      }
-    };
-
-    fetchLocations();
-
-    const socket = io("http://localhost:5000",{
-      transports: ["websocket","polling"],
-    });
-     socket.on("connect", () => {
-    console.log("✅ Connected to socket:", socket.id);
-  });
-    socket.on("vehicle-location", (live: Location) => {
-      console.log("Live location update:", live);
-      
-      setVehiclePaths((prev) => {
-        const updated = { ...prev };
-        if (!updated[live.vehicle_id]) updated[live.vehicle_id] = [];
-        updated[live.vehicle_id].push(live);
-        return updated;
+      const socket = io("http://localhost:5000", {
+        transports: ["websocket", "polling"],
       });
-    });
 
-    return () => {socket.disconnect();
-      
-    };
-  }
-}, [mode]);
+      socket.on("connect", () => {
+        console.log("✅ Connected to socket:", socket.id);
+      });
+
+      socket.on("vehicle-location", (live: Location) => {
+        console.log("Live location update:", live);
+
+        setVehiclePaths((prev) => {
+          const updated = { ...prev };
+          if (!updated[live.vehicle_id]) updated[live.vehicle_id] = [];
+          updated[live.vehicle_id].push(live);
+          return updated;
+        });
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    }
+  }, [mode]);
+
+  // Remove duplicate vehicles based on ID
+  const uniqueVehicles = Array.from(new Map(vehicles.map((v) => [v.id, v])).values());
 
   return (
     <MapContainer
@@ -160,10 +163,10 @@ export default function LiveMap({
             )
         )}
 
-      {/* Overview mode: show current vehicle positions */}
+      {/* Overview mode: show unique vehicle positions */}
       {showVehicles &&
         mode === "overview" &&
-        vehicles.map(
+        uniqueVehicles.map(
           (v) =>
             v.lat &&
             v.lng && (

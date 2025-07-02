@@ -97,7 +97,7 @@ export default function MapPage() {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white text-black shadow-md z-[60]">
                     <SelectItem value="all">All Items</SelectItem>
                     <SelectItem value="bins">Bins Only</SelectItem>
                     <SelectItem value="vehicles">Vehicles Only</SelectItem>
@@ -112,7 +112,7 @@ export default function MapPage() {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white text-black shadow-md z-[60]">
                     <SelectItem value="both">Bins & Vehicles</SelectItem>
                     <SelectItem value="bins">Bins Only</SelectItem>
                     <SelectItem value="vehicles">Vehicles Only</SelectItem>
