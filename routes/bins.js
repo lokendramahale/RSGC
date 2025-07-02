@@ -6,20 +6,34 @@ const { validateRequest, schemas } = require("../middleware/validation")
 
 const router = express.Router()
 
-// Get all bins
+// GET: Get all bins with optional filters
 router.get("/", authenticateToken, async (req, res) => {
   try {
     const { page = 1, limit = 10, area, status, fill_level_min, fill_level_max } = req.query
+    
+    const result = await Bin.findAll(
+      { area, status, fill_level_min, fill_level_max },
+      { page: parseInt(page), limit: parseInt(limit) }
+    )
+    
+     console.log('fetched bins:',result);
+    const bins = result.bins.map((bin) => ({
+      id: bin.id,
+      location_name: bin.location_name,
+      area: bin.area,
+      fill_level: bin.fill_level,
+      status: bin.status,
+      last_collected: bin.last_collected,
+    }))
 
-    const result = await Bin.findAll({ area, status, fill_level_min, fill_level_max }, { page, limit })
-    res.json(result)
+    res.json(bins)
   } catch (error) {
     console.error("Get bins error:", error)
     res.status(500).json({ error: "Failed to get bins" })
   }
 })
 
-// Get bins with alerts
+// GET: Get bins with active alerts
 router.get("/alerts", authenticateToken, async (req, res) => {
   try {
     const bins = await Bin.findWithAlerts()
@@ -30,7 +44,7 @@ router.get("/alerts", authenticateToken, async (req, res) => {
   }
 })
 
-// Get nearby bins
+// GET: Get nearby bins
 router.get("/nearby", authenticateToken, async (req, res) => {
   try {
     const { lat, lng, radius = 5 } = req.query
@@ -39,7 +53,12 @@ router.get("/nearby", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Latitude and longitude are required" })
     }
 
-    const bins = await Bin.findNearby(Number.parseFloat(lat), Number.parseFloat(lng), Number.parseFloat(radius))
+    const bins = await Bin.findNearby(
+      parseFloat(lat),
+      parseFloat(lng),
+      parseFloat(radius)
+    )
+
     res.json({ bins })
   } catch (error) {
     console.error("Get nearby bins error:", error)
@@ -47,36 +66,42 @@ router.get("/nearby", authenticateToken, async (req, res) => {
   }
 })
 
-// Create bin
+// POST: Create a new bin
 router.post("/", authenticateToken, requireAdminOrCoordinator, validateRequest(schemas.createBin), async (req, res) => {
+  
   try {
     const bin = await Bin.create(req.body)
     res.status(201).json({ bin })
   } catch (error) {
     if (error.code === "23505") {
-      // PostgreSQL unique constraint violation
       return res.status(400).json({ error: "Sensor ID already exists" })
     }
-    console.error("Create bin error:", error)
+   console.error("Create bin error:", error, error.stack)
     res.status(500).json({ error: "Failed to create bin" })
   }
 })
 
-// Update bin
+// PATCH: Update an existing bin
+
 router.patch("/:id", authenticateToken, validateRequest(schemas.updateBin), async (req, res) => {
   try {
     const { id } = req.params
-
     const existingBin = await Bin.findById(id)
+
     if (!existingBin) {
       return res.status(404).json({ error: "Bin not found" })
     }
 
-    // Check if fill level changed and create alert if necessary
     const oldFillLevel = existingBin.fill_level
-    const bin = await Bin.update(id, req.body)
+    const updateData = { ...req.body }
 
-    // Create overflow alert if fill level exceeds 90%
+    if (req.body.status !== undefined) updateData.status = req.body.status
+    if (req.body.area !== undefined) updateData.area = req.body.area
+    if (req.body.location_name !== undefined) updateData.location_name = req.body.location_name
+
+    const bin = await Bin.update(id, updateData)
+
+    // Trigger alerts
     if (req.body.fill_level && req.body.fill_level > 90 && oldFillLevel <= 90) {
       await Alert.create({
         bin_id: id,
@@ -84,11 +109,9 @@ router.patch("/:id", authenticateToken, validateRequest(schemas.updateBin), asyn
         severity: req.body.fill_level > 95 ? "critical" : "high",
         message: `Bin at ${bin.location_name} is ${req.body.fill_level}% full`,
       })
-
       await Bin.update(id, { status: "overflow" })
     }
 
-    // Create gas leak alert if gas level is high
     if (req.body.gas_level && req.body.gas_level > 50) {
       await Alert.create({
         bin_id: id,
@@ -98,7 +121,6 @@ router.patch("/:id", authenticateToken, validateRequest(schemas.updateBin), asyn
       })
     }
 
-    // Create fire alert if temperature is high
     if (req.body.temperature && req.body.temperature > 60) {
       await Alert.create({
         bin_id: id,
@@ -115,12 +137,14 @@ router.patch("/:id", authenticateToken, validateRequest(schemas.updateBin), asyn
   }
 })
 
-// Delete bin
+
+
+// DELETE: Delete a bin
 router.delete("/:id", authenticateToken, requireAdminOrCoordinator, async (req, res) => {
   try {
     const { id } = req.params
-
     const bin = await Bin.delete(id)
+
     if (!bin) {
       return res.status(404).json({ error: "Bin not found" })
     }

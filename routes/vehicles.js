@@ -80,22 +80,25 @@ router.patch(
   },
 )
 
-// Delete vehicle
+// DELETE: Remove a vehicle
 router.delete("/:id", authenticateToken, requireAdminOrCoordinator, async (req, res) => {
   try {
     const { id } = req.params
 
-    const vehicle = await Vehicle.delete(id)
+    const vehicle = await Vehicle.findById(id)
     if (!vehicle) {
       return res.status(404).json({ error: "Vehicle not found" })
     }
 
+    await Vehicle.delete(id)
     res.json({ message: "Vehicle deleted successfully" })
   } catch (error) {
     console.error("Delete vehicle error:", error)
     res.status(500).json({ error: "Failed to delete vehicle" })
   }
 })
+
+module.exports = router
 
 // Assign driver to vehicle
 router.post("/:id/assign-driver", authenticateToken, requireAdminOrCoordinator, async (req, res) => {
