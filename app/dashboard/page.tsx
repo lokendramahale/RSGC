@@ -23,7 +23,7 @@ import {
 } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { DashboardMetrics, CollectionLog, Alert } from "@/hooks/dashboard-data"
-
+import { api } from "@/lib/api"
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL 
 console.log("API_BASE =", process.env.NEXT_PUBLIC_API_BASE_URL)
 
@@ -35,23 +35,10 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("rsgc_token");
         const [metricsRes, logsRes, alertsRes] = await Promise.all([
-          fetch(`${API_BASE}/dashboard/summary`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }).then((res) => res.json()),
-          fetch(`${API_BASE}/dashboard/activities?limit=4`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }).then((res) => res.json()),
-          fetch(`${API_BASE}/alerts/active`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }).then((res) => res.json()),
+          api.getDashboardSummary(),
+          api.getDashboardActivities(4),
+          api.getActiveAlerts(),
         ])
         setMetrics(metricsRes.summary)
         setLogs(logsRes.activities?.recentCollections || [])
@@ -60,9 +47,9 @@ export default function DashboardPage() {
         console.error("Failed to fetch dashboard data", err)
       }
     }
+
     fetchData()
   }, [])
-
   return (
     <DashboardLayout>
       <div className="space-y-6">

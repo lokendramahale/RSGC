@@ -1,5 +1,6 @@
 "use client"
 
+import axios from "axios"
 import { useState, useEffect } from "react"
 import {
   Card,
@@ -38,6 +39,7 @@ import {
   CheckCircle,
   Clock,
 } from "lucide-react"
+import { ca } from "date-fns/locale"
 
 interface Bin {
   id: string
@@ -48,6 +50,7 @@ interface Bin {
   last_collected: string
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000"
 const getStatusIcon = (status: string) => {
   switch (status) {
     case "overflow":
@@ -111,20 +114,13 @@ const [newBin, setNewBin] = useState({
   const fetchBins = async () => {
     try {
       const token = localStorage.getItem("rsgc_token")
-      const res = await fetch("http://localhost:5000/api/bins", {
+      const res = await axios.get(`${API_BASE}/bins`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
 
-      if (!res.ok) {
-        const errorText = await res.text()
-        console.error("Error loading bins:", res.status, res.statusText, errorText)
-        throw new Error("Failed to load bins")
-      }
-
-      const data = await res.json()
-      setBins(data)
+      setBins(res.data)
     } catch (err) {
       console.error("Error loading bins:", err)
     }
@@ -143,18 +139,11 @@ const [newBin, setNewBin] = useState({
     if (!selectedBinId) return
     try {
       const token = localStorage.getItem("rsgc_token")
-      const res = await fetch(`http://localhost:5000/api/bins/${selectedBinId}`, {
-        method: "DELETE",
+      const res = await axios.delete(`${API_BASE}/bins/${selectedBinId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
-
-      if (!res.ok) {
-        const errText = await res.text()
-        console.error("Delete error:", errText)
-        throw new Error("Failed to delete bin")
-      }
 
       setBins(bins.filter((bin) => bin.id !== selectedBinId))
     } catch (err) {
@@ -253,32 +242,26 @@ const [newBin, setNewBin] = useState({
           onClick={async () => {
             try {
               const token = localStorage.getItem("rsgc_token")
-              const res = await fetch(
-                `http://localhost:5000/api/bins/${editingBin.id}`,
+              const res = await axios.patch(
+                `${API_BASE}/bins/${editingBin.id}`,
                 {
-                  method: "PATCH",
+                  location_name: editingBin.location_name,
+                  area: editingBin.area,
+                  status: editingBin.status,
+                },
+                {
                   headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                   },
-                  body: JSON.stringify({
-                    location_name: editingBin.location_name,
-                    area: editingBin.area,
-                    status: editingBin.status,
-                  }),
                 }
               )
-
-              if (!res.ok) {
-                const errorText = await res.text()
-                console.error("Update error:", errorText)
-                throw new Error("Failed to update bin")
-              }
 
               setEditingBin(null)
               await fetchBins()
             } catch (err) {
               console.error("Error updating bin:", err)
+              alert("Error updating bin. See console.")
             }
           }}
         >
@@ -343,19 +326,17 @@ const [newBin, setNewBin] = useState({
           onClick={async () => {
             try {
               const token = localStorage.getItem("rsgc_token")
-              const res = await fetch("http://localhost:5000/api/bins", {
-                method: "POST",
+              const res = await axios.post(`${API_BASE}/bins`, newBin, {
                 headers: {
                   "Content-Type": "application/json",
                   Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(newBin),
+                
               })
 
-             if (!res.ok) {
-  const errJson = await res.json()
-  throw new Error("Failed to add bin: " + (errJson.error || JSON.stringify(errJson)))
-}
+              if (res.status !== 201) {
+                throw new Error("Failed to add new bin")
+              }
 
               await fetchBins()
               setNewBin({ id: "", location_name: "", area: "", status: "active" })

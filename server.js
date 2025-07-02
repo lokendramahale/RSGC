@@ -15,10 +15,23 @@ const binRoutes = require("./routes/bins")
 const collectionRoutes = require("./routes/collections")
 const dashboardRoutes = require("./routes/dashboard")
 const alertRoutes = require("./routes/alerts")
-
+const mapRoutes = require("./routes/map")
 const app = express()
 const PORT = process.env.PORT || 5000
 
+
+const http = require("http");
+const socketIo = require("socket.io");
+
+
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    methods: ["GET", "POST"],
+  },
+});
+app.set("io", io);
 // Security middleware
 app.use(helmet())
 app.use(
@@ -54,6 +67,11 @@ app.use("/api/bins", binRoutes)
 app.use("/api/collections", collectionRoutes)
 app.use("/api/dashboard", dashboardRoutes)
 app.use("/api/alerts", alertRoutes)
+app.use("/api/map", mapRoutes)
+
+io.on("connection", (socket) => {
+  console.log("🔌 Socket client connected:", socket.id);
+});
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -101,7 +119,7 @@ async function startServer() {
     // Initialize database schema
     // await initializeDatabase()
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`)
       console.log(`Environment: ${process.env.NODE_ENV || "development"}`)
     })

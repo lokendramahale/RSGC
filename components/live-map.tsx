@@ -1,111 +1,212 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { io } from "socket.io-client";
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import L from "leaflet";
-import { Trash2, Truck } from "lucide-react";
 import "leaflet/dist/leaflet.css";
+import React from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-// Dummy data — replace with real state or props
-const bins = [
-  { id: "BIN-001", lat: 23.2547, lng: 77.4021, status: "normal", fillLevel: 45 },
-  { id: "BIN-002", lat: 23.2599, lng: 77.4126, status: "overflow", fillLevel: 95 },
-  { id: "BIN-003", lat: 23.2670, lng: 77.4213, status: "fire-alert", fillLevel: 78 },
-];
-
-const vehicles = [
-  { id: "TRK-101", lat: 23.2567, lng: 77.4062, status: "active", driver: "Ravi Kumar" },
-  { id: "TRK-102", lat: 23.2620, lng: 77.4150, status: "maintenance", driver: "Priya Sharma" },
-];
-
-const selectedLayer = "both"; // sample default
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "normal": return "bg-green-600";
-    case "overflow": return "bg-red-600";
-    case "fire-alert": return "bg-orange-600";
-    case "active": return "bg-blue-600";
-    case "maintenance": return "bg-gray-600";
-    default: return "bg-gray-400";
-  }
-};
-
-// Fix Leaflet icon issue
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+const vehicleIcon = new L.Icon({
+  iconUrl: "garbage-truck.png",
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+  popupAnchor: [0, -30],
 });
 
-export default function LiveMap() {
+const binIcon = new L.Icon({
+  iconUrl: "recycle-bin.png",
+  iconSize: [25, 25],
+  iconAnchor: [12, 25],
+  popupAnchor: [0, -25],
+});
+
+type Vehicle = {
+  id: string;
+  lat: number;
+  lng: number;
+  driver: string;
+  status: string;
+};
+
+type Bin = {
+  id: string;
+  lat: number;
+  lng: number;
+  status: string;
+  fillLevel: number;
+};
+
+type Location = {
+  vehicle_id: string;
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+  speed?: number;
+  heading?: number;
+};
+
+type Props = {
+  bins?: Bin[];
+  vehicles?: Vehicle[];
+  showBins?: boolean;
+  showVehicles?: boolean;
+  mode?: "overview" | "tracking";
+};
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+
+export default function LiveMap({
+  bins = [],
+  vehicles = [],
+  showBins = true,
+  showVehicles = true,
+  mode = "overview",
+}: Props) {
+  const [vehiclePaths, setVehiclePaths] = useState<Record<string, Location[]>>({});
+
+  useEffect(() => {
+  if (mode === "tracking") {
+    const token = localStorage.getItem("rsgc_token");
+
+    const fetchLocations = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/map/vehicleLocations`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const raw = res.data.vehicles;
+        const locations: Location[] = raw.map((v: any) => ({
+          vehicle_id: v.id,
+          latitude: parseFloat(v.lat),
+          longitude: parseFloat(v.lng),
+          timestamp: v.timestamp,
+          speed: parseFloat(v.speed || 0),
+          heading: parseFloat(v.heading || 0),
+        }));
+
+        const grouped: Record<string, Location[]> = {};
+        for (const loc of locations) {
+          if (!grouped[loc.vehicle_id]) grouped[loc.vehicle_id] = [];
+          grouped[loc.vehicle_id].push(loc);
+        }
+
+        for (const v in grouped) {
+          grouped[v].sort(
+            (a, b) =>
+              new Date(a.timestamp).getTime() -
+              new Date(b.timestamp).getTime()
+          );
+        }
+
+        setVehiclePaths(grouped);
+      } catch (err) {
+        console.error("Fetch error:", err);
+      }
+    };
+
+    fetchLocations();
+
+    const socket = io("http://localhost:5000",{
+      transports: ["websocket","polling"],
+    });
+     socket.on("connect", () => {
+    console.log("✅ Connected to socket:", socket.id);
+  });
+    socket.on("vehicle-location", (live: Location) => {
+      console.log("Live location update:", live);
+      
+      setVehiclePaths((prev) => {
+        const updated = { ...prev };
+        if (!updated[live.vehicle_id]) updated[live.vehicle_id] = [];
+        updated[live.vehicle_id].push(live);
+        return updated;
+      });
+    });
+
+    return () => socket.disconnect();
+  }
+}, [mode]);
+
   return (
-    <div className="relative z-0">
-      <MapContainer
-        center={[23.2599, 77.4126]} // Bhopal
-        zoom={13}
-        style={{ height: "24rem", borderRadius: "0.5rem", position: "relative", zIndex: 1 }}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
-        />
+    <MapContainer
+      center={[23.2599, 77.4126]}
+      zoom={13}
+      style={{ height: "24rem", borderRadius: "0.5rem" }}
+    >
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution="&copy; OpenStreetMap contributors"
+      />
 
-        {(selectedLayer === "both" || selectedLayer === "bins") &&
-          bins.map((bin) => (
-            <Marker key={bin.id} position={[bin.lat, bin.lng]}>
+      {/* Show bins */}
+      {showBins &&
+        bins.map(
+          (bin) =>
+            bin.lat &&
+            bin.lng && (
+              <Marker key={`bin-${bin.id}`} position={[bin.lat, bin.lng]} icon={binIcon}>
+                <Popup>
+                  <strong>Bin {bin.id}</strong>
+                  <br />
+                  Status: {bin.status}
+                  <br />
+                  Fill: {bin.fillLevel}%
+                </Popup>
+              </Marker>
+            )
+        )}
+
+      {/* Overview mode: show current vehicle positions */}
+      {showVehicles &&
+        mode === "overview" &&
+        vehicles.map(
+          (v) =>
+            v.lat &&
+            v.lng && (
+              <Marker key={`v-${v.id}`} position={[v.lat, v.lng]} icon={vehicleIcon}>
+                <Popup>
+                  <strong>{v.id}</strong>
+                  <br />
+                  Driver: {v.driver}
+                  <br />
+                  Status: {v.status}
+                </Popup>
+              </Marker>
+            )
+        )}
+
+      {/* Tracking mode: show vehicle paths and latest marker */}
+      {mode === "tracking" &&
+        Object.entries(vehiclePaths).map(([vehicleId, path]) =>
+          path.length > 0 ? (
+            <Polyline
+              key={`poly-${vehicleId}`}
+              positions={path.map((p) => [p.latitude, p.longitude])}
+              color="blue"
+            />
+          ) : null
+        )}
+
+      {mode === "tracking" &&
+        Object.entries(vehiclePaths).map(([vehicleId, path]) => {
+          if (path.length === 0) return null;
+          const last = path[path.length - 1];
+          return (
+            <Marker
+              key={`last-${vehicleId}`}
+              position={[last.latitude, last.longitude]}
+              icon={vehicleIcon}
+            >
               <Popup>
-                <div className="text-sm">
-                  <div className={`w-4 h-4 rounded-full ${getStatusColor(bin.status)} border-2 border-white shadow-lg mb-1`}></div>
-                  <div className="flex items-center gap-1">
-                    <Trash2 className="w-3 h-3 text-red-500" /> <strong>{bin.id}</strong>
-                  </div>
-                  <div>Status: {bin.status}</div>
-                  <div>Fill Level: {bin.fillLevel}%</div>
-                </div>
+                <strong>Vehicle: {vehicleId}</strong>
+                <br />
+                Last updated: {new Date(last.timestamp).toLocaleTimeString()}
               </Popup>
             </Marker>
-          ))}
-
-        {(selectedLayer === "both" || selectedLayer === "vehicles") &&
-          vehicles.map((vehicle) => (
-            <Marker key={vehicle.id} position={[vehicle.lat, vehicle.lng]}>
-              <Popup>
-                <div className="text-sm">
-                  <div className={`w-5 h-5 rounded-full ${getStatusColor(vehicle.status)} border-2 border-white shadow-lg flex items-center justify-center mb-1`}>
-                    <Truck className="w-3 h-3 text-white" />
-                  </div>
-                  <div><strong>{vehicle.id}</strong></div>
-                  <div>Status: {vehicle.status}</div>
-                  <div>Driver: {vehicle.driver}</div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-      </MapContainer>
-
-      {/* Status Summary */}
-      <div className="absolute bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg z-[999]">
-        <div className="text-sm font-medium mb-2">Quick Stats</div>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-            <span>{bins.filter((b) => b.status === "normal").length} Normal</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-red-600 rounded-full"></div>
-            <span>{bins.filter((b) => b.status === "overflow").length} Overflow</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-            <span>{vehicles.filter((v) => v.status === "active").length} Active</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
-            <span>{bins.filter((b) => b.status === "fire-alert").length} Fire Alert</span>
-          </div>
-        </div>
-      </div>
-    </div>
+          );
+        })}
+    </MapContainer>
   );
 }

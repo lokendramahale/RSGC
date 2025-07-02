@@ -1,53 +1,61 @@
+import axios from "axios"
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
 
 class ApiError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
+  constructor(public status: number, message: string) {
     super(message)
     this.name = "ApiError"
   }
 }
 
-async function fetchApi(endpoint: string, options: RequestInit = {}) {
-  const token = localStorage.getItem("token")
+const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+})
 
-  const config: RequestInit = {
-    headers: {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
-    ...options,
+axiosInstance.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("rsgc_token")
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
   }
+  return config
+})
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
-
-  if (!response.ok) {
-    throw new ApiError(response.status, `HTTP error! status: ${response.status}`)
+async function axiosApi<T = any>(url: string, config = {}): Promise<T> {
+  try {
+    const response = await axiosInstance(url, config)
+    return response.data
+  } catch (error: any) {
+    const status = error.response?.status || 500
+    const message = error.response?.data?.message || "API Error"
+    throw new ApiError(status, message)
   }
-
-  return response.json()
 }
 
 export const api = {
   // Dashboard APIs
-  getDashboardSummary: () => fetchApi("/dashboard/summary"),
-  getDashboardCharts: (days = 7) => fetchApi(`/dashboard/charts?days=${days}`),
-  getDashboardActivities: (limit = 10) => fetchApi(`/dashboard/activities?limit=${limit}`),
-
+  getDashboardSummary: () => axiosApi("/dashboard/summary"),
+  getDashboardCharts: (days = 7) => axiosApi(`/dashboard/charts?days=${days}`),
+  getDashboardActivities: (limit = 10) => axiosApi(`/dashboard/activities?limit=${limit}`),
+  //map locations
+  getBinLocations: () => axiosApi("/map/binLocations"),
+  getVehicleLocations: () => axiosApi("/map/vehicleLocations"),
   // Auth APIs
   login: (credentials: { email: string; password: string }) =>
-    fetchApi("/auth/login", {
+    axiosApi("/auth/login", {
       method: "POST",
-      body: JSON.stringify(credentials),
+      data: credentials,
     }),
 
   register: (userData: { name: string; email: string; password: string; role?: string }) =>
-    fetchApi("/auth/register", {
+    axiosApi("/auth/register", {
       method: "POST",
-      body: JSON.stringify(userData),
+      data: userData,
     }),
 
   // User APIs
@@ -58,7 +66,7 @@ export const api = {
         if (value !== undefined) searchParams.append(key, value.toString())
       })
     }
-    return fetchApi(`/users?${searchParams.toString()}`)
+    return axiosApi(`/users?${searchParams.toString()}`)
   },
 
   // Vehicle APIs
@@ -69,10 +77,10 @@ export const api = {
         if (value !== undefined) searchParams.append(key, value.toString())
       })
     }
-    return fetchApi(`/vehicles?${searchParams.toString()}`)
+    return axiosApi(`/map/vehicleLocations?${searchParams.toString()}`)
   },
 
-  getActiveVehicles: () => fetchApi("/vehicles/active"),
+  getActiveVehicles: () => axiosApi("/vehicles/active"),
 
   // Bin APIs
   getBins: (params?: { page?: number; limit?: number; area?: string; status?: string }) => {
@@ -82,7 +90,7 @@ export const api = {
         if (value !== undefined) searchParams.append(key, value.toString())
       })
     }
-    return fetchApi(`/bins?${searchParams.toString()}`)
+    return axiosApi(`/bins?${searchParams.toString()}`)
   },
 
   // Collection APIs
@@ -93,7 +101,7 @@ export const api = {
         if (value !== undefined) searchParams.append(key, value.toString())
       })
     }
-    return fetchApi(`/collections?${searchParams.toString()}`)
+    return axiosApi(`/collections?${searchParams.toString()}`)
   },
 
   // Alert APIs
@@ -104,8 +112,8 @@ export const api = {
         if (value !== undefined) searchParams.append(key, value.toString())
       })
     }
-    return fetchApi(`/alerts?${searchParams.toString()}`)
+    return axiosApi(`/alerts?${searchParams.toString()}`)
   },
 
-  getActiveAlerts: () => fetchApi("/alerts/active"),
+  getActiveAlerts: () => axiosApi("/alerts/active"),
 }

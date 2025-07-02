@@ -7,19 +7,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MapPin, Truck, Trash2, Search, Filter, Layers, Navigation, Maximize } from "lucide-react"
-
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 const LiveMap = dynamic(() => import('@/components/live-map'), {
   ssr: false, // disables server-side rendering
 });
 
-import { useState } from "react"
 
 
 export default function MapPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [mapView, setMapView] = useState("all")
   const [selectedLayer, setSelectedLayer] = useState("both")
+  const [vehicles, setVehicles] = useState([])
+  const [bins, setBins] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+  const fetchData = async () => {
+    setLoading(true)
+    setError(null)
 
+    try {
+      const [vehicleRes, binRes] = await Promise.all([
+        api.getVehicleLocations(),
+        api.getBinLocations(),
+      ])
+
+      setVehicles(vehicleRes.vehicles || [])
+      setBins(binRes.bins || [])
+    } catch (err: any) {
+      console.error("Error fetching data:", err)
+      setError("Failed to fetch vehicle or bin data")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  fetchData()
+}, [])
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -132,10 +158,15 @@ export default function MapPage() {
               <CardDescription>Interactive map showing real-time positions of bins and vehicles</CardDescription>
             </CardHeader>
       <h1 className="text-xl font-bold mb-4">Live Map</h1>
-      <LiveMap />
+      <LiveMap mode="overview" showVehicles={true} showBins={true} vehicles={vehicles} bins={bins} />
+
             </Card>
           </div>
       </div>
     </DashboardLayout>
   );
 }
+function setError(arg0: string) {
+  throw new Error('Function not implemented.');
+}
+
