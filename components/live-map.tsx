@@ -125,7 +125,9 @@ export default function LiveMap({
       });
     });
 
-    return () => socket.disconnect();
+    return () => {socket.disconnect();
+      
+    };
   }
 }, [mode]);
 

@@ -32,30 +32,10 @@ import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
-// Dynamically import the LiveMap with no SSR
 const LiveMap = dynamic(() => import("@/components/live-map"), {
   ssr: false,
 });
 
-// Utility for status color
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "normal":
-      return "bg-green-600";
-    case "overflow":
-      return "bg-red-600";
-    case "fire-alert":
-      return "bg-orange-600";
-    case "active":
-      return "bg-blue-600";
-    case "maintenance":
-      return "bg-gray-600";
-    default:
-      return "bg-gray-400";
-  }
-};
-
-// Utility for status badge
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "active":
@@ -114,6 +94,16 @@ export default function TrackingPage() {
       ? vehicles
       : vehicles.filter((v) => v.id === selectedVehicle);
 
+  // Remove duplicates from overall list
+  const uniqueVehicles = Array.from(
+    new Map(vehicles.map((v) => [v.id, v])).values()
+  );
+
+  // Remove duplicates from filtered list
+  const uniqueFilteredVehicles = Array.from(
+    new Map(filteredVehicles.map((v) => [v.id, v])).values()
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -160,9 +150,9 @@ export default function TrackingPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Vehicles</SelectItem>
-                  {vehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.id} - {vehicle.driver}
+                  {uniqueVehicles.map((vehicle) => (
+                    <SelectItem key={vehicle.id} value={String(vehicle.id)}>
+                      {vehicle.id} - {vehicle.driver || "Unknown"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -187,7 +177,7 @@ export default function TrackingPage() {
             </CardContent>
           </Card>
 
-          {/* Vehicle List */}
+          {/* Vehicle Status */}
           <Card>
             <CardHeader>
               <CardTitle>Vehicle Status</CardTitle>
@@ -195,7 +185,7 @@ export default function TrackingPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {filteredVehicles.map((vehicle) => (
+                {uniqueFilteredVehicles.map((vehicle) => (
                   <div key={vehicle.id} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">{vehicle.id}</span>
