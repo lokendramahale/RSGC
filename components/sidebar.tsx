@@ -71,9 +71,10 @@ export function Sidebar({ className }: SidebarProps) {
                   className={cn(
                     "w-full justify-start",
                     isCollapsed && "justify-center px-2",
-                    isActive && "bg-primary/10 text-primary",
+                    isActive && "bg-primary-light text-primary",
                   )}
                 >
+                  
                   <item.icon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
                   {!isCollapsed && item.name}
                 </Button>
