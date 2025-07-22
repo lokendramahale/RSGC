@@ -1,0 +1,126 @@
+
+
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 142 76% 36%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 210 40% 98%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 98%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 98%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 142 76% 36%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 142 76% 36%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 142 76% 36%;
+  }
+  
+@import "tailwindcss";
+@import 'leaflet/dist/leaflet.css';
+
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+}
+.test-primary {
+  background-color: hsl(142, 76%, 36%);
+  
+  padding: 1rem;
+  border-radius: 8px;
+}
+@layer utilities {
+  /* Light mode */
+  .bg-primary { background-color: hsl(var(--primary)); }
+  .text-primary{ color: hsl(var(--primary)); }
+  .text-primary-foreground { color: hsl(var(--primary-foreground)); }
+
+  .bg-secondary { background-color: hsl(var(--secondary)); }
+  .text-secondary-foreground { color: hsl(var(--secondary-foreground)); }
+
+  .bg-accent { background-color: hsl(var(--accent)); }
+  .text-accent-foreground { color: hsl(var(--accent-foreground)); }
+
+  .bg-muted { background-color: hsl(var(--muted)); }
+  .text-muted-foreground { color: hsl(var(--muted-foreground)); }
+
+  .bg-destructive { background-color: hsl(var(--destructive)); }
+  .text-destructive-foreground { color: hsl(var(--destructive-foreground)); }
+
+  .bg-card { background-color: hsl(var(--card)); }
+  .text-card-foreground { color: hsl(var(--card-foreground)); }
+
+  .bg-popover { background-color: hsl(var(--popover)); }
+  .text-popover-foreground { color: hsl(var(--popover-foreground)); }
+
+  .text-foreground { color: hsl(var(--foreground)); }
+  .bg-background { background-color: hsl(var(--background)); }
+
+  .border-border { border-color: hsl(var(--border)); }
+  .ring-ring { --tw-ring-color: hsl(var(--ring)); }
+
+  .bg-primary-light {background-color: hsl(142, 76%, 90%); /* or whatever "10%" you want*/}
+  /* Dark mode overrides */
+  .dark .bg-primary { background-color: hsl(var(--primary)); }
+  .dark .text-primary-foreground { color: hsl(var(--primary-foreground)); }
+
+  .dark .bg-secondary { background-color: hsl(var(--secondary)); }
+  .dark .text-secondary-foreground { color: hsl(var(--secondary-foreground)); }
+
+  .dark .bg-accent { background-color: hsl(var(--accent)); }
+  .dark .text-accent-foreground { color: hsl(var(--accent-foreground)); }
+
+  .dark .bg-muted { background-color: hsl(var(--muted)); }
+  .dark .text-muted-foreground { color: hsl(var(--muted-foreground)); }
+
+  .dark .bg-destructive { background-color: hsl(var(--destructive)); }
+  .dark .text-destructive-foreground { color: hsl(var(--destructive-foreground)); }
+
+  .dark .bg-card { background-color: hsl(var(--card)); }
+  .dark .text-card-foreground { color: hsl(var(--card-foreground)); }
+
+  .dark .bg-popover { background-color: hsl(var(--popover)); }
+  .dark .text-popover-foreground { color: hsl(var(--popover-foreground)); }
+
+  .dark .text-foreground { color: hsl(var(--foreground)); }
+  .dark .bg-background { background-color: hsl(var(--background)); }
+
+  .dark .border-border { border-color: hsl(var(--border)); }
+  .dark .ring-ring { --tw-ring-color: hsl(var(--ring)); }
+}
+
