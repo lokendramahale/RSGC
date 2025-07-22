@@ -2,47 +2,47 @@ const pool = require("../config/database")
 const bcrypt = require("bcryptjs")
 
 class User {
-  static async findAll(filters = {}, pagination = {}) {
-    const { page = 1, limit = 10, role, status } = { ...filters, ...pagination }
-    const offset = (page - 1) * limit
+ static async findAll(filters = {}, pagination = {}) {
+  const { page = 1, limit = 10, role, status } = { ...filters, ...pagination }
+  const offset = (page - 1) * limit
 
-    let whereClause = "WHERE 1=1"
-    const params = []
-    let paramCount = 0
+  let whereClause = "WHERE 1=1"
+  const params = []
+  let paramCount = 0
 
-    if (role) {
-      whereClause += ` AND role = $${++paramCount}`
-      params.push(role)
-    }
-
-    if (status) {
-      whereClause += ` AND status = $${++paramCount}`
-      params.push(status)
-    }
-
-    const countQuery = `SELECT COUNT(*) FROM users ${whereClause}`
-    const dataQuery = `
-      SELECT id, name, email, role, phone, status, last_login, created_at, updated_at
-      FROM users ${whereClause}
-      ORDER BY created_at DESC
-      LIMIT $${++paramCount} OFFSET $${++paramCount}
-    `
-
-    params.push(limit, offset)
-
-    const [countResult, dataResult] = await Promise.all([
-      pool.query(countQuery, params.slice(0, -2)),
-      pool.query(dataQuery, params),
-    ])
-
-    return {
-      users: dataResult.rows,
-      total: Number.parseInt(countResult.rows[0].count),
-      page: Number.parseInt(page),
-      pages: Math.ceil(Number.parseInt(countResult.rows[0].count) / limit),
-      limit: Number.parseInt(limit),
-    }
+  if (role) {
+    whereClause += ` AND role = $${++paramCount}`
+    params.push(role)
   }
+
+  if (status) {
+    whereClause += ` AND status = $${++paramCount}`
+    params.push(status)
+  }
+
+  const countQuery = `SELECT COUNT(*) FROM users ${whereClause}`
+  const dataQuery = `
+    SELECT id, name, email, role, phone, status, last_login, created_at, updated_at
+    FROM users ${whereClause}
+    ORDER BY created_at DESC
+    LIMIT $${++paramCount} OFFSET $${++paramCount}
+  `
+
+  params.push(limit, offset)
+
+  const [countResult, dataResult] = await Promise.all([
+    pool.query(countQuery, params.slice(0, -2)),
+    pool.query(dataQuery, params),
+  ])
+
+  return {
+    users: dataResult.rows,
+    total: Number.parseInt(countResult.rows[0].count),
+    page: Number.parseInt(page),
+    pages: Math.ceil(Number.parseInt(countResult.rows[0].count) / limit),
+    limit: Number.parseInt(limit),
+  }
+}
 
   static async findById(id) {
     const query = `

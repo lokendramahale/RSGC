@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,70 +18,26 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Plus, Search, Edit, Trash2, MapPin, Truck, User, Clock, Fuel } from "lucide-react"
+import { Plus, Search, Edit, Trash2, Truck, User, Clock, Fuel } from "lucide-react"
+import axios from "axios"
 
-const vehicles = [
-  {
-    id: "TRK-101",
-    driver: "John Smith",
-    status: "active",
-    lastActive: "2 min ago",
-    location: "Downtown Area",
-    fuelLevel: 85,
-    route: "Route A",
-    collectionsToday: 12,
-  },
-  {
-    id: "TRK-102",
-    driver: "Sarah Wilson",
-    status: "active",
-    lastActive: "5 min ago",
-    location: "Commercial District",
-    fuelLevel: 67,
-    route: "Route B",
-    collectionsToday: 8,
-  },
-  {
-    id: "TRK-103",
-    driver: "Mike Johnson",
-    status: "maintenance",
-    lastActive: "2 hours ago",
-    location: "Depot",
-    fuelLevel: 45,
-    route: "N/A",
-    collectionsToday: 0,
-  },
-  {
-    id: "TRK-104",
-    driver: "David Brown",
-    status: "inactive",
-    lastActive: "1 hour ago",
-    location: "Residential Area",
-    fuelLevel: 92,
-    route: "Route C",
-    collectionsToday: 15,
-  },
-  {
-    id: "TRK-105",
-    driver: "Emma Davis",
-    status: "active",
-    lastActive: "1 min ago",
-    location: "University Campus",
-    fuelLevel: 78,
-    route: "Route D",
-    collectionsToday: 10,
-  },
-]
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL
 
-const drivers = [
-  { id: "1", name: "John Smith" },
-  { id: "2", name: "Sarah Wilson" },
-  { id: "3", name: "Mike Johnson" },
-  { id: "4", name: "David Brown" },
-  { id: "5", name: "Emma Davis" },
-  { id: "6", name: "Robert Taylor" },
-  { id: "7", name: "Lisa Anderson" },
-]
+interface Vehicle {
+  id: string
+  driver: string
+  status: string
+  route: string
+  fuelLevel: number
+  collectionsToday: number
+  lastActive: string
+  driver_id?: string
+}
+
+interface Driver {
+  id: string
+  name: string
+}
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -103,18 +59,104 @@ const getFuelLevelColor = (level: number) => {
 }
 
 export default function VehiclesPage() {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [newVehicle, setNewVehicle] = useState({ id: "", driver_id: "", route: "" })
+  const [token, setToken] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setToken(localStorage.getItem("rsgc_token"))
+    setLoading(false)
+  }, [])
+
+  const fetchVehicles = async () => {
+    try {
+      if (!token) return
+      const res = await axios.get(`${API_BASE}/vehicles`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setVehicles(Array.isArray(res.data?.data) ? res.data.data : [])
+    } catch (error) {
+      console.error("Error fetching vehicles:", error)
+    }
+  }
+
+  const fetchDrivers = async () => {
+  try {
+    const res = await axios.get(`${API_BASE}/users?role=driver`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    setDrivers(Array.isArray(res.data) ? res.data : [])
+  } catch (err) {
+    console.error("Error fetching drivers:", err)
+    setDrivers([])
+  }
+}
+
+
+  const handleAddVehicle = async () => {
+  try {
+    if (!newVehicle.id || !newVehicle.driver_id || !newVehicle.route) {
+      alert("Please fill all fields.")
+      return
+    }
+
+    await axios.post(`${API_BASE}/vehicles`, {
+      id: newVehicle.id,
+      driver_id: newVehicle.driver_id,
+      route: newVehicle.route,
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    setIsAddDialogOpen(false)
+    setNewVehicle({ id: "", driver_id: "", route: "" }) // Reset form
+    fetchVehicles()
+  } catch (err: any) {
+    console.error("Error adding vehicle:", err.response?.data || err.message)
+    alert("Failed to add vehicle.")
+  }
+}
+
+
+  useEffect(() => {
+    if (token) {
+      fetchVehicles()
+      fetchDrivers()
+    }
+  }, [token])
 
   const filteredVehicles = vehicles.filter((vehicle) => {
     const matchesSearch =
       vehicle.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       vehicle.driver.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === "all" || vehicle.status === statusFilter
-
     return matchesSearch && matchesStatus
   })
+
+  const deleteVehicle = async (id: string) => {
+    try {
+      const res = await axios.delete(`${API_BASE}/vehicles/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setVehicles((prev) => prev.filter((v) => v.id !== id))
+    } catch (err: any) {
+      console.error("Failed to delete vehicle:", err.response?.data || err.message)
+    }
+  }
+
+  const handleDeleteConfirmed = async (id: string) => {
+    await deleteVehicle(id)
+    setConfirmDeleteId(null)
+  }
+
+  if (loading) return null
+  if (!token) return <div>Please log in to view this page.</div>
 
   return (
     <DashboardLayout>
@@ -123,11 +165,13 @@ export default function VehiclesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Vehicle Management</h1>
-            <p className="text-muted-foreground">Monitor and manage your fleet of garbage collection vehicles</p>
+            <p className="text-muted-foreground">
+              Monitor and manage your fleet of garbage collection vehicles
+            </p>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button variant="default" onClick={() => setIsAddDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Vehicle
               </Button>
@@ -142,34 +186,54 @@ export default function VehiclesPage() {
                   <Label htmlFor="vehicleId" className="text-right">
                     Vehicle ID
                   </Label>
-                  <Input id="vehicleId" placeholder="TRK-106" className="col-span-3" />
+                  <Input
+                    id="vehicleId"
+                    placeholder="TRK-106"
+                    className="col-span-3"
+                    value={newVehicle.id}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, id: e.target.value })}
+                  />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="driver" className="text-right">
                     Driver
                   </Label>
-                  <Select>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select driver" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {drivers.map((driver) => (
-                        <SelectItem key={driver.id} value={driver.id}>
-                          {driver.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                 <Select
+  value={newVehicle.driver_id}
+  onValueChange={(value) => setNewVehicle({ ...newVehicle, driver_id: value })}
+>
+  <SelectTrigger className="col-span-3">
+    <SelectValue placeholder="Select driver" />
+  </SelectTrigger>
+  <SelectContent>
+    {drivers.length > 0 ? (
+      drivers.map((driver) => (
+        <SelectItem key={driver.id} value={driver.id}>
+          {driver.name}
+        </SelectItem>
+      ))
+    ) : (
+      <div className="px-4 py-2 text-sm text-muted-foreground">No drivers found</div>
+    )}
+  </SelectContent>
+</Select>
+
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="route" className="text-right">
                     Route
                   </Label>
-                  <Input id="route" placeholder="Route E" className="col-span-3" />
+                  <Input
+                    id="route"
+                    placeholder="Route E"
+                    className="col-span-3"
+                    value={newVehicle.route}
+                    onChange={(e) => setNewVehicle({ ...newVehicle, route: e.target.value })}
+                  />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" onClick={() => setIsAddDialogOpen(false)}>
+                <Button type="submit" onClick={handleAddVehicle}>
                   Add Vehicle
                 </Button>
               </DialogFooter>
@@ -180,7 +244,7 @@ export default function VehiclesPage() {
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Total Vehicles</CardTitle>
               <Truck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
@@ -189,37 +253,37 @@ export default function VehiclesPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Active</CardTitle>
               <Truck className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{vehicles.filter((v) => v.status === "active").length}</div>
+              <div className="text-2xl font-bold">{vehicles.filter(v => v.status === "active").length}</div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">In Maintenance</CardTitle>
               <Truck className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{vehicles.filter((v) => v.status === "maintenance").length}</div>
+              <div className="text-2xl font-bold">{vehicles.filter(v => v.status === "maintenance").length}</div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Collections Today</CardTitle>
               <Trash2 className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {vehicles.reduce((sum, vehicle) => sum + vehicle.collectionsToday, 0)}
+                {vehicles.reduce((sum, v) => sum + (v.collectionsToday || 0), 0)}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Vehicle Management */}
+        {/* Vehicle Table */}
         <Card>
           <CardHeader>
             <CardTitle>Fleet Overview</CardTitle>
@@ -249,14 +313,13 @@ export default function VehiclesPage() {
               </Select>
             </div>
 
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Vehicle ID</TableHead>
                     <TableHead>Driver</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Location</TableHead>
                     <TableHead>Route</TableHead>
                     <TableHead>Fuel Level</TableHead>
                     <TableHead>Collections</TableHead>
@@ -265,47 +328,25 @@ export default function VehiclesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredVehicles.map((vehicle) => (
+                  {filteredVehicles.map(vehicle => (
                     <TableRow key={vehicle.id}>
                       <TableCell className="font-medium">{vehicle.id}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span>{vehicle.driver}</span>
-                        </div>
-                      </TableCell>
+                      <TableCell className="flex items-center gap-2"><User className="w-4 h-4" />{vehicle.driver}</TableCell>
                       <TableCell>{getStatusBadge(vehicle.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span>{vehicle.location}</span>
-                        </div>
-                      </TableCell>
                       <TableCell>{vehicle.route}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Fuel className="h-4 w-4 text-muted-foreground" />
-                          <span className={getFuelLevelColor(vehicle.fuelLevel)}>{vehicle.fuelLevel}%</span>
-                        </div>
+                      <TableCell className="flex items-center gap-1">
+                        <Fuel className="w-4 h-4 text-muted-foreground" />
+                        <span className={getFuelLevelColor(vehicle.fuelLevel)}>{vehicle.fuelLevel}%</span>
                       </TableCell>
                       <TableCell>{vehicle.collectionsToday}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>{vehicle.lastActive}</span>
-                        </div>
+                      <TableCell className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        {vehicle.lastActive}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
-                          <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <MapPin className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="text-red-600">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="text-red-600" onClick={() => setConfirmDeleteId(vehicle.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -316,6 +357,21 @@ export default function VehiclesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white border rounded-lg shadow-lg p-6 w-80">
+            <h2 className="text-lg font-semibold mb-2 text-center">Delete Vehicle</h2>
+            <p className="text-sm text-center mb-4">Are you sure you want to delete this vehicle?</p>
+            <div className="flex justify-center space-x-4">
+              <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+              <button className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700" onClick={() => handleDeleteConfirmed(confirmDeleteId!)}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 }

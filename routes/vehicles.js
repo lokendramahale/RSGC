@@ -1,37 +1,57 @@
-const express = require("express")
-const Vehicle = require("../models/Vehicle")
-const VehicleLocation = require("../models/VehicleLocation")
-const User = require("../models/User")
-const { authenticateToken, requireAdminOrCoordinator } = require("../middleware/auth")
-const { validateRequest, schemas } = require("../middleware/validation")
+const express = require("express");
+const pool = require("../config/database");
+const { authenticateToken, requireAdminOrCoordinator } = require("../middleware/auth");
+const { validateRequest, schemas } = require("../middleware/validation");
 
-const router = express.Router()
+const router = express.Router();
 
-// Get all vehicles
+// Utility
+const isValidId = (id) => /^[a-zA-Z0-9\-]+$/.test(id);
+
+// 🔹 Get all vehicles with filters
 router.get("/", authenticateToken, async (req, res) => {
   try {
-    const { page = 1, limit = 10, status, driver_id } = req.query
+    const { status, driver_id, page = 1, limit = 100 } = req.query;
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(parseInt(limit) || 100, 1000);
+    const offset = (pageNum - 1) * limitNum;
 
-    const result = await Vehicle.findAll({ status, driver_id }, { page, limit })
-    res.json(result)
-  } catch (error) {
-    console.error("Get vehicles error:", error)
-    res.status(500).json({ error: "Failed to get vehicles" })
+    let query = "SELECT * FROM vehicles WHERE 1=1";
+    const values = [];
+
+    if (status) {
+      values.push(status);
+      query += ` AND status = $${values.length}`;
+    }
+
+    if (driver_id) {
+      if (!isValidId(driver_id)) {
+        return res.status(400).json({ error: "Invalid driver ID" });
+      }
+      values.push(driver_id);
+      query += ` AND driver_id = $${values.length}`;
+    }
+
+    values.push(limitNum, offset);
+    query += ` ORDER BY last_active DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
+
+    const result = await pool.query(query, values);
+
+    res.json({
+      data: result.rows,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: result.rowCount, // Note: You may want to run a separate COUNT(*) for exact total count
+      },
+    });
+  } catch (err) {
+    console.error("Get vehicles error:", err.stack);
+    res.status(500).json({ error: "Failed to get vehicles" });
   }
-})
+});
 
-// Get active vehicles with last known location
-router.get("/active", authenticateToken, async (req, res) => {
-  try {
-    const vehicles = await Vehicle.findActive()
-    res.json({ vehicles })
-  } catch (error) {
-    console.error("Get active vehicles error:", error)
-    res.status(500).json({ error: "Failed to get active vehicles" })
-  }
-})
-
-// Create vehicle
+// 🔹 Create vehicle
 router.post(
   "/",
   authenticateToken,
@@ -39,146 +59,169 @@ router.post(
   validateRequest(schemas.createVehicle),
   async (req, res) => {
     try {
-      const vehicle = await Vehicle.create(req.body)
-      const vehicleWithDriver = await Vehicle.findById(vehicle.id)
+      const { id, driver_id, route } = req.body;
 
-      res.status(201).json({ vehicle: vehicleWithDriver })
-    } catch (error) {
-      if (error.code === "23505") {
-        // PostgreSQL unique constraint violation
-        return res.status(400).json({ error: "Vehicle number already exists" })
+      const insertQuery = `
+        INSERT INTO vehicles (id, driver_id, route)
+        VALUES ($1, $2, $3)
+        RETURNING *
+      `;
+
+      const result = await pool.query(insertQuery, [id, driver_id, route]);
+      res.status(201).json(result.rows[0]);
+    } catch (err) {
+      if (err.code === "23505") {
+        return res.status(400).json({ error: "Vehicle ID already exists" });
       }
-      console.error("Create vehicle error:", error)
-      res.status(500).json({ error: "Failed to create vehicle" })
+      console.error("Create vehicle error:", err);
+      res.status(500).json({ error: "Failed to create vehicle" });
     }
-  },
-)
+  }
+);
 
-// Update vehicle
-router.patch(
-  "/:id",
-  authenticateToken,
-  requireAdminOrCoordinator,
-  validateRequest(schemas.updateVehicle),
-  async (req, res) => {
-    try {
-      const { id } = req.params
+// 🔹 Update vehicle
+router.patch("/:id", authenticateToken, requireAdminOrCoordinator, validateRequest(schemas.updateVehicle), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const fields = Object.keys(req.body);
+    const updates = fields.map((key, i) => `${key} = $${i + 2}`);
+    const values = [id, ...fields.map(key => req.body[key])];
 
-      const existingVehicle = await Vehicle.findById(id)
-      if (!existingVehicle) {
-        return res.status(404).json({ error: "Vehicle not found" })
-      }
+    const updateQuery = `
+      UPDATE vehicles
+      SET ${updates.join(", ")}
+      WHERE id = $1
+      RETURNING *
+    `;
 
-      await Vehicle.update(id, req.body)
-      const updatedVehicle = await Vehicle.findById(id)
-
-      res.json({ vehicle: updatedVehicle })
-    } catch (error) {
-      console.error("Update vehicle error:", error)
-      res.status(500).json({ error: "Failed to update vehicle" })
+    const result = await pool.query(updateQuery, values);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Vehicle not found" });
     }
-  },
-)
 
-// DELETE: Remove a vehicle
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Update vehicle error:", err);
+    res.status(500).json({ error: "Failed to update vehicle" });
+  }
+});
+
+// 🔹 Delete vehicle
 router.delete("/:id", authenticateToken, requireAdminOrCoordinator, async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
 
-    const vehicle = await Vehicle.findById(id)
-    if (!vehicle) {
-      return res.status(404).json({ error: "Vehicle not found" })
+    const check = await pool.query("SELECT 1 FROM vehicles WHERE id = $1", [id]);
+    if (check.rowCount === 0) {
+      return res.status(404).json({ error: "Vehicle not found" });
     }
 
-    await Vehicle.delete(id)
-    res.json({ message: "Vehicle deleted successfully" })
-  } catch (error) {
-    console.error("Delete vehicle error:", error)
-    res.status(500).json({ error: "Failed to delete vehicle" })
+    await pool.query("DELETE FROM vehicles WHERE id = $1", [id]);
+    res.json({ message: "Vehicle deleted successfully" });
+  } catch (err) {
+    console.error("Delete vehicle error:", err);
+    res.status(500).json({ error: "Failed to delete vehicle" });
   }
-})
+});
 
-module.exports = router
-
-// Assign driver to vehicle
+// 🔹 Assign driver to vehicle
 router.post("/:id/assign-driver", authenticateToken, requireAdminOrCoordinator, async (req, res) => {
   try {
-    const { id } = req.params
-    const { driver_id } = req.body
+    const { id } = req.params;
+    const { driver_id } = req.body;
 
-    const vehicle = await Vehicle.findById(id)
-    if (!vehicle) {
-      return res.status(404).json({ error: "Vehicle not found" })
+    const vehicleCheck = await pool.query("SELECT * FROM vehicles WHERE id = $1", [id]);
+    if (vehicleCheck.rowCount === 0) {
+      return res.status(404).json({ error: "Vehicle not found" });
     }
 
     if (driver_id) {
-      const driver = await User.findById(driver_id)
-      if (!driver || driver.role !== "driver" || driver.status !== "active") {
-        return res.status(400).json({ error: "Invalid or inactive driver" })
+      const driverCheck = await pool.query(
+        "SELECT * FROM users WHERE id = $1 AND role = 'driver' AND status = 'active'",
+        [driver_id]
+      );
+      if (driverCheck.rowCount === 0) {
+        return res.status(400).json({ error: "Invalid or inactive driver" });
       }
     }
 
-    await Vehicle.update(id, { driver_id: driver_id || null })
-    const updatedVehicle = await Vehicle.findById(id)
+    const update = await pool.query(
+      "UPDATE vehicles SET driver_id = $1 WHERE id = $2 RETURNING *",
+      [driver_id || null, id]
+    );
 
-    res.json({ vehicle: updatedVehicle })
-  } catch (error) {
-    console.error("Assign driver error:", error)
-    res.status(500).json({ error: "Failed to assign driver" })
+    res.json(update.rows[0]);
+  } catch (err) {
+    console.error("Assign driver error:", err);
+    res.status(500).json({ error: "Failed to assign driver" });
   }
-})
+});
 
-// Log vehicle location
+// 🔹 Log vehicle location
 router.post("/:id/location", authenticateToken, validateRequest(schemas.vehicleLocation), async (req, res) => {
   try {
-    const { id } = req.params
-    const { latitude, longitude, speed, heading } = req.body
+    const { id } = req.params;
+    const { latitude, longitude, speed, heading } = req.body;
 
-    const vehicle = await Vehicle.findById(id)
-    if (!vehicle) {
-      return res.status(404).json({ error: "Vehicle not found" })
+    const vehicle = await pool.query("SELECT * FROM vehicles WHERE id = $1", [id]);
+    if (vehicle.rowCount === 0) {
+      return res.status(404).json({ error: "Vehicle not found" });
     }
 
-    // Check if user is the driver of this vehicle or has admin/coordinator role
-    if (req.user.role === "driver" && vehicle.driver_id !== req.user.id) {
-      return res.status(403).json({ error: "Can only log location for assigned vehicle" })
+    if (req.user.role === "driver" && vehicle.rows[0].driver_id !== req.user.id) {
+      return res.status(403).json({ error: "Unauthorized to log this vehicle's location" });
     }
 
-    const location = await VehicleLocation.create({
-      vehicle_id: id,
-      latitude,
-      longitude,
-      speed,
-      heading,
-    })
+    const insert = await pool.query(
+      `INSERT INTO vehicle_locations (vehicle_id, latitude, longitude, speed, heading)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [id, latitude, longitude, speed, heading]
+    );
 
-    // Update vehicle last_active timestamp
-    await Vehicle.updateLastActive(id)
+    await pool.query("UPDATE vehicles SET last_active = NOW() WHERE id = $1", [id]);
 
-    res.status(201).json({ location })
-  } catch (error) {
-    console.error("Log location error:", error)
-    res.status(500).json({ error: "Failed to log location" })
+    res.status(201).json(insert.rows[0]);
+  } catch (err) {
+    console.error("Log vehicle location error:", err);
+    res.status(500).json({ error: "Failed to log location" });
   }
-})
+});
 
-// Get vehicle location history
+// 🔹 Get vehicle location history
 router.get("/:id/locations", authenticateToken, async (req, res) => {
   try {
-    const { id } = req.params
-    const { start_date, end_date, limit = 100 } = req.query
+    const { id } = req.params;
+    const { start_date, end_date, limit = 100 } = req.query;
 
-    const vehicle = await Vehicle.findById(id)
-    if (!vehicle) {
-      return res.status(404).json({ error: "Vehicle not found" })
+    const vehicle = await pool.query("SELECT * FROM vehicles WHERE id = $1", [id]);
+    if (vehicle.rowCount === 0) {
+      return res.status(404).json({ error: "Vehicle not found" });
     }
 
-    const locations = await VehicleLocation.findByVehicleId(id, { start_date, end_date, limit })
-    res.json({ locations })
-  } catch (error) {
-    console.error("Get locations error:", error)
-    res.status(500).json({ error: "Failed to get locations" })
-  }
-})
+    let query = "SELECT * FROM vehicle_locations WHERE vehicle_id = $1";
+    const params = [id];
+    let paramIndex = 2;
 
-module.exports = router
+    if (start_date) {
+      query += ` AND timestamp >= $${paramIndex++}`;
+      params.push(start_date);
+    }
+
+    if (end_date) {
+      query += ` AND timestamp <= $${paramIndex++}`;
+      params.push(end_date);
+    }
+
+    query += ` ORDER BY timestamp DESC LIMIT $${paramIndex++}`;
+    params.push(limit);
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Get location history error:", err);
+    res.status(500).json({ error: "Failed to fetch location history" });
+  }
+});
+
+module.exports = router;

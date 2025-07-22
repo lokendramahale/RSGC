@@ -6,17 +6,26 @@ const { validateRequest, schemas } = require("../middleware/validation")
 const router = express.Router()
 
 // Get all users (admin only)
+// 📁 routes/user.js or wherever your user routes are defined
 router.get("/", authenticateToken, requireAdmin, async (req, res) => {
   try {
+    // 🔹 Read query params from request URL
     const { page = 1, limit = 10, role, status } = req.query
 
-    const result = await User.findAll({ role, status }, { page, limit })
+    // 🔹 Call the model with correct arguments
+    const result = await User.findAll(
+      { role, status }, // <-- filters object
+      { page: parseInt(page), limit: parseInt(limit) } // <-- pagination object
+    )
+
+    // 🔹 Return the data
     res.json(result)
   } catch (error) {
     console.error("Get users error:", error)
     res.status(500).json({ error: "Failed to get users" })
   }
 })
+
 
 // Create user (admin only)
 router.post("/", authenticateToken, requireAdmin, validateRequest(schemas.createUser), async (req, res) => {
