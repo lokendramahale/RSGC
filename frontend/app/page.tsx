@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/backend/contexts/auth-context"
+import { useAuth } from "../../backend/contexts/auth-context"
 
 export default function Page() {
   const { user, isLoading } = useAuth()
