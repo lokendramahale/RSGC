@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MapPin, Truck, Trash2, Search, Filter, Layers, Navigation, Maximize } from "lucide-react"
 import { useEffect, useState } from "react";
-import { api } from "../../../backend/lib/api";
+import { api } from "../../lib/api";
 const LiveMap = dynamic(() => import('@/components/live-map'), {
   ssr: false, // disables server-side rendering
 });

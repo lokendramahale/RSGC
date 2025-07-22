@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { useAuth } from "../../../backend/contexts/auth-context"
+import { useAuth } from "../../contexts/auth-context"
 import { User, Bell, Shield, Palette, Globe, Save, Upload } from "lucide-react"
 
 export default function SettingsPage() {

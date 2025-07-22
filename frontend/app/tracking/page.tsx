@@ -28,9 +28,9 @@ import {
   Navigation,
   Clock,
 } from "lucide-react";
-import { useAuth } from "../../../backend/contexts/auth-context";
+import { useAuth } from "../../contexts/auth-context";
 import { useRouter } from "next/navigation";
-import { api } from "../../../backend/lib/api";
+import { api } from "../../lib/api";
 
 const LiveMap = dynamic(() => import("@/components/live-map"), {
   ssr: false,

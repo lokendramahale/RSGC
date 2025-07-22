@@ -3,7 +3,7 @@
 import type React from "react"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "../../backend/contexts/auth-context"
+import { useAuth } from "../contexts/auth-context"
 import { Sidebar } from "./sidebar"
 import { Header } from "./header"
 

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { useAuth } from "../../backend/contexts/auth-context"
+import { useAuth } from "../contexts/auth-context"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 export function Header() {

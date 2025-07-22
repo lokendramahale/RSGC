@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { DashboardMetrics, CollectionLog, Alert } from "../../../backend/hooks/dashboard-data"
-import { api } from "../../../backend/lib/api"
+import { api } from "../../lib/api"
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL 
 console.log("API_BASE =", process.env.NEXT_PUBLIC_API_BASE_URL)
 
