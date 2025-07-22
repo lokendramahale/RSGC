@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { api } from "../../frontend/lib/api"
+import { api } from "../lib/api"
 
 export interface DashboardMetrics {
   totalBins: number
