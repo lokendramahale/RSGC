@@ -37,7 +37,7 @@ router.get("/vehicleLocations", authenticateToken, requireAdmin, async (req, res
 
 
 // Update vehicle location
-router.post("/updateLocation", authenticateToken, async (req, res) => {
+router.post("/updateLocation", async (req, res) => {
   const { vehicle_id, latitude, longitude, speed, heading, timestamp } = req.body;
 
   if (!vehicle_id || !latitude || !longitude) {
