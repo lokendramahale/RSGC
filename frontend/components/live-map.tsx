@@ -106,7 +106,7 @@ export default function LiveMap({
 
       fetchLocations();
 
-      const socket = io("http://localhost:5000", {
+      const socket = io(process.env.BACKEND_URL, {
         transports: ["websocket", "polling"],
       });
 
