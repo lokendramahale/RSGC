@@ -133,7 +133,7 @@ export default function LiveMap({
             if (path.length === 0) continue;
 
             const lastTime = new Date(path[path.length - 1].timestamp).getTime();
-            const isRecent = now - lastTime < 10000;
+            const isRecent = now - lastTime < 50000;
 
             if (isRecent) {
               updated[vehicleId] = path;
