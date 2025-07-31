@@ -93,8 +93,7 @@ export default function LiveMap({
 
           for (const v in grouped) {
             grouped[v].sort(
-              (a, b) =>
-                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+              (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
             );
           }
 
@@ -125,13 +124,33 @@ export default function LiveMap({
         });
       });
 
+      const cleanupInterval = setInterval(() => {
+        const now = Date.now();
+        setVehiclePaths((prev) => {
+          const updated: typeof prev = {};
+
+          for (const [vehicleId, path] of Object.entries(prev)) {
+            if (path.length === 0) continue;
+
+            const lastTime = new Date(path[path.length - 1].timestamp).getTime();
+            const isRecent = now - lastTime < 10000;
+
+            if (isRecent) {
+              updated[vehicleId] = path;
+            }
+          }
+
+          return updated;
+        });
+      }, 5000);
+
       return () => {
         socket.disconnect();
+        clearInterval(cleanupInterval);
       };
     }
   }, [mode]);
 
-  // Remove duplicate vehicles based on ID
   const uniqueVehicles = Array.from(new Map(vehicles.map((v) => [v.id, v])).values());
 
   return (
@@ -145,7 +164,6 @@ export default function LiveMap({
         attribution="&copy; OpenStreetMap contributors"
       />
 
-      {/* Show bins */}
       {showBins &&
         bins.map(
           (bin) =>
@@ -163,7 +181,6 @@ export default function LiveMap({
             )
         )}
 
-      {/* Overview mode: show unique vehicle positions */}
       {showVehicles &&
         mode === "overview" &&
         uniqueVehicles.map(
@@ -182,7 +199,6 @@ export default function LiveMap({
             )
         )}
 
-      {/* Tracking mode: show vehicle paths and latest marker */}
       {mode === "tracking" &&
         Object.entries(vehiclePaths).map(([vehicleId, path]) =>
           path.length > 0 ? (
