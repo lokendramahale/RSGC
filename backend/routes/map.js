@@ -66,6 +66,8 @@ router.post("/updateLocation", authenticateToken, async (req, res) => {
       speed,
       heading,
       timestamp: timestamp || new Date(),
+      driver: driver || null,
+      phone: phone || null,
     });
 
     res.status(201).json({ message: "Location updated" });
