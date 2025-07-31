@@ -38,7 +38,7 @@ router.get("/vehicleLocations", authenticateToken, requireAdmin, async (req, res
 
 // Update vehicle location
 router.post("/updateLocation", async (req, res) => {
-  const { vehicle_id, latitude, longitude, speed, heading, timestamp } = req.body;
+  const { vehicle_id, latitude, longitude, speed, heading, timestamp, driver, phone} = req.body;
 
   if (!vehicle_id || !latitude || !longitude) {
     return res.status(400).json({ error: "Missing required fields" });
