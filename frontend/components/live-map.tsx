@@ -106,7 +106,7 @@ export default function LiveMap({
 
       fetchLocations();
 
-      const socket = io(process.env.BACKEND_URL, {
+      const socket = io("https://rsgc.onrender.com", {
         transports: ["websocket", "polling"],
       });
 
