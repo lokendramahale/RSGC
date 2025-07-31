@@ -72,9 +72,9 @@ router.post("/updateLocation", async (req, res) => {
 
     res.status(201).json({ message: "Location updated" });
   }  catch (err) {
-  console.error("🚨 SQL Error in /updateLocation:", err.message, err.stack);
-  res.status(500).json({ error: "Internal server error", details: err.message });
-
+    console.error("🚨 SQL Error in /updateLocation:", err.message, err.stack);
+    res.status(500).json({ error: "Internal server error", details: err.message });
+  }
 });
 
 
