@@ -64,6 +64,7 @@ export default function LiveMap({
   mode = "overview",
 }: Props) {
   const [vehiclePaths, setVehiclePaths] = useState<Record<string, Location[]>>({});
+  const [latestLocation, setLatestLocation] = useState<Record<string, Location>>({});
 
   useEffect(() => {
     if (mode === "tracking") {
@@ -86,9 +87,19 @@ export default function LiveMap({
           }));
 
           const grouped: Record<string, Location[]> = {};
+          const latest: Record<string, Location> = {};
+
           for (const loc of locations) {
             if (!grouped[loc.vehicle_id]) grouped[loc.vehicle_id] = [];
             grouped[loc.vehicle_id].push(loc);
+
+            // Always keep the latest
+            if (
+              !latest[loc.vehicle_id] ||
+              new Date(loc.timestamp) > new Date(latest[loc.vehicle_id].timestamp)
+            ) {
+              latest[loc.vehicle_id] = loc;
+            }
           }
 
           for (const v in grouped) {
@@ -98,6 +109,7 @@ export default function LiveMap({
           }
 
           setVehiclePaths(grouped);
+          setLatestLocation(latest);
         } catch (err) {
           console.error("Fetch error:", err);
         }
@@ -114,30 +126,29 @@ export default function LiveMap({
       });
 
       socket.on("vehicle-location", (live: Location) => {
-        console.log("Live location update:", live);
-
         setVehiclePaths((prev) => {
           const updated = { ...prev };
           if (!updated[live.vehicle_id]) updated[live.vehicle_id] = [];
           updated[live.vehicle_id].push(live);
           return updated;
         });
+
+        setLatestLocation((prev) => ({
+          ...prev,
+          [live.vehicle_id]: live,
+        }));
       });
 
-      const cleanupInterval = setInterval(() => {
-        const now = Date.now();
+      // Clean up polylines after 100 seconds
+      const interval = setInterval(() => {
         setVehiclePaths((prev) => {
-          const updated: typeof prev = {};
+          const now = Date.now();
+          const updated: Record<string, Location[]> = {};
 
-          for (const [vehicleId, path] of Object.entries(prev)) {
-            if (path.length === 0) continue;
-
-            const lastTime = new Date(path[path.length - 1].timestamp).getTime();
-            const isRecent = now - lastTime < 50000;
-
-            if (isRecent) {
-              updated[vehicleId] = path;
-            }
+          for (const id in prev) {
+            updated[id] = prev[id].filter(
+              (loc) => now - new Date(loc.timestamp).getTime() <= 100000
+            );
           }
 
           return updated;
@@ -146,7 +157,7 @@ export default function LiveMap({
 
       return () => {
         socket.disconnect();
-        clearInterval(cleanupInterval);
+        clearInterval(interval);
       };
     }
   }, [mode]);
@@ -164,6 +175,7 @@ export default function LiveMap({
         attribution="&copy; OpenStreetMap contributors"
       />
 
+      {/* Bins */}
       {showBins &&
         bins.map(
           (bin) =>
@@ -181,6 +193,7 @@ export default function LiveMap({
             )
         )}
 
+      {/* Vehicle positions in overview mode */}
       {showVehicles &&
         mode === "overview" &&
         uniqueVehicles.map(
@@ -199,9 +212,10 @@ export default function LiveMap({
             )
         )}
 
+      {/* Polylines for last 10 seconds only */}
       {mode === "tracking" &&
         Object.entries(vehiclePaths).map(([vehicleId, path]) =>
-          path.length > 0 ? (
+          path.length > 1 ? (
             <Polyline
               key={`poly-${vehicleId}`}
               positions={path.map((p) => [p.latitude, p.longitude])}
@@ -210,24 +224,21 @@ export default function LiveMap({
           ) : null
         )}
 
+      {/* Always show last marker */}
       {mode === "tracking" &&
-        Object.entries(vehiclePaths).map(([vehicleId, path]) => {
-          if (path.length === 0) return null;
-          const last = path[path.length - 1];
-          return (
-            <Marker
-              key={`last-${vehicleId}`}
-              position={[last.latitude, last.longitude]}
-              icon={vehicleIcon}
-            >
-              <Popup>
-                <strong>Vehicle: {vehicleId}</strong>
-                <br />
-                Last updated: {new Date(last.timestamp).toLocaleTimeString()}
-              </Popup>
-            </Marker>
-          );
-        })}
+        Object.entries(latestLocation).map(([vehicleId, last]) => (
+          <Marker
+            key={`last-${vehicleId}`}
+            position={[last.latitude, last.longitude]}
+            icon={vehicleIcon}
+          >
+            <Popup>
+              <strong>Vehicle: {vehicleId}</strong>
+              <br />
+              Last updated: {new Date(last.timestamp).toLocaleTimeString()}
+            </Popup>
+          </Marker>
+        ))}
     </MapContainer>
   );
 }
