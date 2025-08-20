@@ -21,8 +21,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider> {/* ✅ Enables class-based dark mode */}
-          <AuthProvider>{children}</AuthProvider>
+        <ThemeProvider> 
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

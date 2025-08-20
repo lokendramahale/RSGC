@@ -57,6 +57,9 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
   }
+   button, [role="button"] {
+    cursor: pointer;
+  }
 }
 .test-primary {
   background-color: hsl(142, 76%, 36%);
