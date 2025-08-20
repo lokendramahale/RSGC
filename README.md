@@ -1,4 +1,4 @@
-# 🚛 RSGC Backend API
+# 🚛 RSGC
 
 The **Remote Surveillance Garbage Collection (RSGC)** Backend API is built with **Node.js, Express.js, and PostgreSQL (with PostGIS)**.  
 It powers the RSGC platform, enabling smart waste collection through real-time vehicle tracking, smart bin monitoring, and automated alerts.
