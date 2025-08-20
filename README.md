@@ -33,6 +33,68 @@ It powers the RSGC platform, enabling smart waste collection through real-time v
 
 ---
 
+## 📡 API Endpoints (Highlights)
+
+### Authentication
+- `POST /api/auth/login` – User login  
+- `GET /api/auth/profile` – Get logged-in user  
+- `POST /api/auth/refresh` – Refresh token  
+
+### Vehicles
+- `GET /api/vehicles` – List vehicles  
+- `POST /api/vehicles` – Create vehicle  
+- `POST /api/vehicles/:id/location` – Log GPS data  
+- `GET /api/vehicles/:id/locations` – Vehicle history  
+
+### Bins
+- `GET /api/bins` – List bins  
+- `PATCH /api/bins/:id` – Update bin (triggers alerts if needed)  
+- `GET /api/bins/alerts` – Get bins with active alerts  
+
+### Collection Logs
+- `POST /api/collections` – Add log (with photo)  
+- `GET /api/collections/vehicle/:id` – Vehicle-specific logs  
+
+### Dashboard
+- `GET /api/dashboard/summary` – Metrics summary  
+- `GET /api/dashboard/charts` – Chart data  
+
+### Alerts
+- `GET /api/alerts` – List alerts  
+- `PATCH /api/alerts/:id/acknowledge` – Mark as acknowledged  
+- `PATCH /api/alerts/:id/resolve` – Resolve alert  
+
+---
+
+## 🗄️ Database Overview
+- **Users** – Authentication and roles (Admin, Coordinator, Driver)  
+- **Vehicles** – Registry with driver assignments  
+- **Vehicle Locations** – Timestamped GPS data (lat, lng, speed, heading)  
+- **Bins** – Sensor data (fill level, temp, gas)  
+- **Collection Logs** – History of waste collection with photos  
+- **Alerts** – Overflow, fire, gas leak alerts with resolution tracking  
+
+---
+
+## 🔒 Security
+- **JWT Authentication** – Token-based secure sessions  
+- **RBAC** – Role-based access control  
+- **Password Hashing** – bcrypt for secure storage  
+- **Rate Limiting** – Prevent brute-force & spam requests  
+- **Helmet + CORS** – Secured headers & API protection  
+- **Input Validation** – Joi schema-based validation  
+
+---
+
+## ⚙️ Production Considerations
+- Managed **PostgreSQL with PostGIS**  
+- Use **HTTPS** for secure transport  
+- Cloud storage for file uploads (e.g., AWS S3)  
+- Logging & monitoring enabled  
+- Regular **database backups**  
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
